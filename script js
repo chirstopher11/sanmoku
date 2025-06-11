@@ -1,0 +1,26 @@
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  background: #f0f0f0;
+  font-family: sans-serif;
+}
+#game {
+  text-align: center;
+}
+#status {
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+canvas {
+  border: 2px solid #333;
+  background: #fff;
+  cursor: pointer;
+}
+#reset {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+}
