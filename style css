@@ -1,0 +1,160 @@
+// —— 全局设置 —— 
+const canvas   = document.getElementById('board');
+const ctx      = canvas.getContext('2d');
+const statusP  = document.getElementById('status');
+const resetBtn = document.getElementById('reset');
+
+const SIZE = 8;                       
+const W    = canvas.width;            
+const H    = canvas.height;
+const cell = { w: W/SIZE, h: H/SIZE };
+
+let board, current, gameOver;
+
+// 8 方向向量
+const DIRS = [
+  [-1,-1],[-1,0],[-1,1],
+  [ 0,-1],        [ 0,1],
+  [ 1,-1],[ 1,0],[ 1,1]
+];
+
+// —— 初始化 / 重置 —— 
+function initGame() {
+  board = Array.from({ length: SIZE }, ()=> Array(SIZE).fill(null));
+  board[3][3] = 'W'; board[3][4] = 'B';
+  board[4][3] = 'B'; board[4][4] = 'W';
+  current  = 'B';    // 黑先手
+  gameOver = false;
+  drawBoard();
+  updateStatus();
+}
+
+// —— 更新文字提示 —— 
+function updateStatus() {
+  statusP.textContent = gameOver
+    ? '游戏结束'
+    : `当前回合：${ current==='B'? '黑 ●' : '白 ○' }`;
+}
+
+// —— 绘制网格 + 棋子 —— 
+function drawBoard() {
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0,0,W,H);
+
+  ctx.strokeStyle = '#000';
+  for (let i=0; i<=SIZE; i++) {
+    let x = i*cell.w;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    let y = i*cell.h;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+
+  for (let r=0; r<SIZE; r++) {
+    for (let c=0; c<SIZE; c++) {
+      const col = board[r][c];
+      if (!col) continue;
+      const cx = c*cell.w + cell.w/2;
+      const cy = r*cell.h + cell.h/2;
+      const rad= Math.min(cell.w,cell.h)*0.4;
+      ctx.beginPath();
+      ctx.arc(cx,cy,rad,0,Math.PI*2);
+      ctx.fillStyle = col==='B'? '#000':'#fff';
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.stroke();
+    }
+  }
+}
+
+// —— 计算落子后应翻转的对手棋子 —— 
+function getFlippable(r,c,color) {
+  const opp = color==='B'? 'W':'B';
+  let toFlip = [];
+
+  for (let [dr,dc] of DIRS) {
+    let rr = r+dr, cc = c+dc;
+    const line = [];
+    while (
+      rr>=0 && rr<SIZE &&
+      cc>=0 && cc<SIZE &&
+      board[rr][cc]===opp
+    ) {
+      line.push([rr,cc]);
+      rr+=dr; cc+=dc;
+    }
+    if (
+      line.length>0 &&
+      rr>=0 && rr<SIZE &&
+      cc>=0 && cc<SIZE &&
+      board[rr][cc]===color
+    ) {
+      toFlip = toFlip.concat(line);
+    }
+  }
+
+  return toFlip;
+}
+
+// —— 判断棋盘是否已满 —— 
+function isBoardFull() {
+  return board.every(row => row.every(cell => cell!==null));
+}
+
+// —— 统计黑/白棋子数量 —— 
+function countPieces() {
+  const cnt = { B:0, W:0 };
+  board.forEach(row => row.forEach(v => v && cnt[v]++));
+  return cnt;
+}
+
+// —— 游戏结束 —— 
+function endGame() {
+  gameOver = true;
+  const { B, W } = countPieces();
+  let msg = `游戏结束\n黑 ●: ${B}\n白 ○: ${W}\n`;
+  msg += B>W? '黑胜！' : (W>B? '白胜！' : '平局！');
+  alert(msg);
+  updateStatus();
+}
+
+// —— 点击落子逻辑（先算可翻列表，再放子，再翻转，再判定胜负） —— 
+canvas.addEventListener('click', e => {
+  if (gameOver) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const c    = Math.floor((e.clientX - rect.left) / cell.w);
+  const r    = Math.floor((e.clientY - rect.top ) / cell.h);
+
+  if (board[r][c] !== null) return;    // 只能在空格落子
+
+  // 1) 先算出要翻转的对手棋子
+  const flips = getFlippable(r, c, current);
+
+  // 2) 放下自己的棋子
+  board[r][c] = current;
+
+  // 3) 翻转对手棋子
+  flips.forEach(([rr,cc]) => {
+    board[rr][cc] = current;
+  });
+
+  drawBoard();
+
+  // 4) 立即判定胜负
+  const { B, W } = countPieces();
+  if (B===0 || W===0 || isBoardFull()) {
+    endGame();
+    return;
+  }
+
+  // 5) 换手并更新提示
+  current = current==='B'? 'W':'B';
+  updateStatus();
+});
+
+// —— 重置按钮 —— 
+resetBtn.addEventListener('click', initGame);
+
+// —— 启动游戏 —— 
+initGame();
